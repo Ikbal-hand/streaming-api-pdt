@@ -1,8 +1,3 @@
-Tentu! Berikut versi **README.md dalam Bahasa Inggris**, sudah diformat profesional dan siap untuk dipublikasikan di GitHub, internal wiki, atau laporan proyek:
-
----
-
-```markdown
 # ✨ Project Report: Streaming Service Metadata Platform ✨
 
 A distributed backend system for streaming services using Node.js, PostgreSQL (Citus), MongoDB, and Redis.
