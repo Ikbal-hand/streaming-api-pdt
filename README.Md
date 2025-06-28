@@ -1,4 +1,4 @@
-````markdown
+
 # ✨ Streaming Service Metadata Platform ✨
 
 A comprehensive, scalable backend system for a streaming platform, built with Node.js, PostgreSQL (Citus), MongoDB, and Redis.
