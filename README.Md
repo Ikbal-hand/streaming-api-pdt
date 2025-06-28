@@ -110,26 +110,58 @@ This platform follows a **microservice architecture** backed by distributed data
 
 ## 6. ⚙️ Sharding & Replication Strategies
 
-### 6.1. Sharding with Citus
+Berikut adalah versi Bahasa Inggris dan berformat GitHub/Markdown `README.md` friendly untuk **Section 6 – Sharding, Replication, and FDW Strategy**, disusun rapi, profesional, dan informatif:
 
-- Large tables like `content_metadata` are sharded by `content_id`
-- Reference tables (`genres`, `cast_crew`) are replicated for JOIN efficiency
+---
 
-### 6.2. Logical Replication
+## 6. ⚙️ Sharding, Replication, and Data Distribution Strategy
 
-- **Master:** `analytics_db`  
-- **Replica:** `analytics_replica_db`  
-- `users` and `user_watch_history` are published/subscribed using PostgreSQL logical replication
+### 6.1. 🔀 Sharding with Citus
 
-**Benefits:**
-- High availability  
-- Read scaling  
-- Real-time sync across containers
+**Implementation**:
+Sharding is applied on the primary PostgreSQL instance (`postgresdb`) using [Citus](https://www.citusdata.com/). Tables like `content_metadata` are distributed using the `create_distributed_table` command based on the `content_id`. This ensures that all data related to a content entity resides in the same shard, optimizing performance for content-specific queries.
+Reference tables such as `cast_crew` and `genres` are replicated across all worker nodes to enable efficient distributed joins.
+
+**Internal Distribution Benefits**:
+
+* **Horizontal Scalability**: Rows are automatically distributed across multiple shards, which can reside on different nodes.
+* **Load Distribution**: Enables workload balancing and dataset scaling by simply adding new worker nodes to the Citus cluster.
+
+---
+
+### 6.2. 🔁 Logical Replication (PostgreSQL → PostgreSQL)
+
+**Implementation**:
+Logical replication is configured between `postgres_analytics_db` (publisher/master) and `postgres_analytics_replica_db` (subscriber/replica).
+
+* The publisher (`analytics_db`) uses `CREATE PUBLICATION` to publish changes in tables like `users` and `user_watch_history`.
+* The replica (`analytics_replica_db`) subscribes using `CREATE SUBSCRIPTION` and receives live updates automatically.
+
+**Replication Benefits**:
+
+* ✅ **High Availability**: If the master fails, the replica can be promoted with minimal downtime.
+* 🚀 **Read Scaling**: Heavy read queries can be offloaded to the replica to improve performance.
+* 🎯 **Selective Distribution**: Only specific tables are replicated, making it efficient and compatible with different PostgreSQL versions — useful for analytics or DR (Disaster Recovery) purposes.
+
+---
+
+### 6.3. 🌐 Data Federation via Foreign Data Wrapper (FDW)
+
+**Implementation**:
+FDW (Foreign Data Wrapper) is used from `postgresdb` (Citus metadata DB) to `postgres_analytics_db` (Analytics DB).
+
+* With FDW, `postgresdb` can **query remote tables** like `users` and `user_watch_history` as if they are local tables.
+* This is done by setting up a `FOREIGN SERVER`, a `USER MAPPING`, and running `IMPORT FOREIGN SCHEMA`.
+
+**External Distribution Benefits**:
+
+* 🔗 **Cross-Database Integration**: Allows SQL queries that join content metadata from Citus with user data from the Analytics DB, without physically copying or moving data.
+* 🧩 **Modularity**: Keeps data domains (e.g., content vs. users) separated, while maintaining operational unification.
+* 🌐 **Schema Flexibility**: Though FDW is used here between PostgreSQL instances, it's capable of connecting to **non-PostgreSQL databases** as well — enabling future-proof hybrid data architectures.
 
 ---
 
 ## 7. 🔄 Distributed Query Scenarios
-Here is the GitHub-compatible markdown format for your **API Endpoint Reference Table**, tailored for display in your project’s `README.md`:
 
 ---
 
