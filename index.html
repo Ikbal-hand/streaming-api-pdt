@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dasbor Platform Streaming</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- 
+        Chosen Palette: Slate & Sky Blue
+        Application Structure Plan: A tab-based Single-Page Application (SPA) designed as a "System Explorer Dashboard". The structure is divided into thematic sections (Overview, API Explorer, Database Schema, Project Structure, Key Concepts) to facilitate non-linear exploration and better understanding. This is more user-friendly than a linear report, allowing users (developers, managers) to jump to the section most relevant to them. The core interaction is switching between these views to explore the system's architecture, test live APIs, and learn about the underlying technologies.
+        Visualization & Content Choices:
+        - Architecture Diagram -> Inform & Organize -> Image embed -> Provides a clear, interactive visual map of the system components.
+        - API Endpoints -> Interact & Test -> Interactive Forms with JS Fetch -> Users can select real IDs (fetched on load) and see live JSON responses, turning the static list of endpoints into a practical testing tool.
+        - Database Schemas -> Inform & Organize -> Tabbed Code Blocks -> Presents complex schema information in a clean, organized, and easily digestible format.
+        - Project Structure -> Organize & Inform -> Accordion Panels -> Explains the purpose and function of each major directory/file in the Node.js project.
+        - Key Concepts (Sharding/FDW/Replikasi) -> Educate & Inform -> Accordion Panels with simple visual aids -> Breaks down complex backend concepts into manageable, interactive learning modules.
+        CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-btn.active { background-color: #0284c7; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .schema-tab-btn.active { color: white; border-color: #0284c7; }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .api-method { font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 0.375rem; color: white; font-size: 0.8rem; }
+        .api-get { background-color: #16a34a; }
+        .api-post { background-color: #ea580c; }
+        .response-status { font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 0.375rem; color: white; }
+        .status-200, .status-201, .status-250 { background-color: #16a34a; }
+        .status-404 { background-color: #dc2626; }
+        .status-500 { background-color: #f59e0b; }
+        .status-error { background-color: #64748b; }
+        .entity {
+            background-color: #334155; /* slate-700 */
+            border: 1px solid #475569; /* slate-600 */
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .entity-title {
+            font-weight: bold;
+            color: #f8fafc; /* slate-50 */
+            margin-bottom: 0.5rem;
+            border-bottom: 1px dashed #64748b; /* slate-500 */
+            padding-bottom: 0.25rem;
+        }
+        .fk {
+            color: #a78bfa; /* violet-400 */
+        }
+        .pk {
+            color: #34d399; /* emerald-400 */
+        }
+        .relationship {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            color: #94a3b8; /* slate-400 */
+        }
+        .relationship-arrow {
+            font-size: 1.2em;
+            margin: 0 0.5rem;
+        }
+        .image-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #2a2a2a;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-300">
+
+    <div class="w-full max-w-7xl mx-auto p-4 md:p-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-white">Streaming Service Metadata Platform</h1>
+            <p class="mt-4 text-lg text-slate-400">Dasbor Interaktif untuk Menjelajahi Arsitektur Backend</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center gap-2 md:gap-4 mb-10">
+            <button data-tab="overview" class="tab-btn active px-4 py-2 text-sm md:text-base font-semibold rounded-lg bg-slate-700 hover:bg-sky-600 transition-colors">Ikhtisar</button>
+            <button data-tab="api-explorer" class="tab-btn px-4 py-2 text-sm md:text-base font-semibold rounded-lg bg-slate-700 hover:bg-sky-600 transition-colors">Penjelajah API</button>
+            <button data-tab="db-schema" class="tab-btn px-4 py-2 text-sm md:text-base font-semibold rounded-lg bg-slate-700 hover:bg-sky-600 transition-colors">Skema Database</button>
+            <button data-tab="project-structure" class="tab-btn px-4 py-2 text-sm md:text-base font-semibold rounded-lg bg-slate-700 hover:bg-sky-600 transition-colors">Struktur Proyek</button>
+            <button data-tab="concepts" class="tab-btn px-4 py-2 text-sm md:text-base font-semibold rounded-lg bg-slate-700 hover:bg-sky-600 transition-colors">Konsep Kunci</button>
+        </nav>
+
+        <main>
+            <div id="overview" class="tab-content active">
+                <section class="bg-slate-800 p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold text-white mb-4 border-b border-slate-700 pb-2">Arsitektur Sistem</h2>
+                    <p class="mb-6 text-slate-400">Platform ini menggunakan arsitektur terdistribusi untuk menangani berbagai jenis data secara efisien. Setiap komponen memiliki peran spesifik, mulai dari penyimpanan data terstruktur dengan PostgreSQL, data fleksibel dengan MongoDB, hingga caching cepat dengan Redis. Anda dapat menyisipkan diagram arsitektur sistem Anda di bawah ini.</p>
+                    
+                    <!-- Gambar Arsitektur Sistem -->
+                    <div class="image-container">
+                        <img src="/image/SYSTEM.png" alt="Diagram Arsitektur Sistem">
+                    </div>
+                    <!-- Akhir Gambar Arsitektur Sistem -->
+
+                </section>
+                 <section class="bg-slate-800 p-6 mt-8 rounded-xl">
+                    <h2 class="text-2xl font-bold text-white mb-4 border-b border-slate-700 pb-2">Contoh Metrik Performa</h2>
+                    <p class="text-slate-400 mb-6">Grafik ini menyajikan contoh waktu respons API, menunjukkan bagaimana sistem dapat menangani permintaan dengan cepat. Interaksi dengan Redis Cache secara signifikan mengurangi latensi untuk data yang sering diakses.</p>
+                    <div class="chart-container relative h-64 md:h-80 w-full max-w-2xl mx-auto" style="max-height: 400px;">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <div id="api-explorer" class="tab-content">
+                 <p class="text-center text-slate-400 mb-8">Gunakan formulir di bawah ini untuk berinteraksi langsung dengan API yang berjalan. Dropdown diisi secara dinamis dengan ID dari database saat halaman dimuat. Anda dapat mengirim permintaan dan melihat respons JSON mentah secara real-time.</p>
+                <div id="api-loading-message" class="text-center text-yellow-400 mb-6">Memuat ID dari database...</div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="endpoint-section">
+                        <h3 class="mb-4"><span class="api-method api-get">GET</span> /content/ids</h3>
+                        <p class="text-sm text-slate-400 mb-4">Mengambil semua ID Konten.</p>
+                        <form id="getAllContentIdsForm">
+                            <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700">Jalankan</button>
+                            <pre id="getAllContentIdsOutput" class="mt-4 bg-slate-900 rounded-md p-3 text-xs"></pre>
+                        </form>
+                    </div>
+                    <div class="endpoint-section">
+                        <h3 class="mb-4"><span class="api-method api-get">GET</span> /users/ids</h3>
+                        <p class="text-sm text-slate-400 mb-4">Mengambil semua ID Pengguna.</p>
+                        <form id="getAllUserIdsForm">
+                            <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700">Jalankan</button>
+                            <pre id="getAllUserIdsOutput" class="mt-4 bg-slate-900 rounded-md p-3 text-xs"></pre>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="endpoint-section">
+                    <h3 class="mb-4"><span class="api-method api-get">GET</span> /content/details</h3>
+                    <p class="text-sm text-slate-400 mb-4">Mengambil detail lengkap (PG + Mongo + Redis + FDW).</p>
+                    <form id="getDetailsForm" class="space-y-4">
+                        <div>
+                            <label for="detailsContentIdSelect">Pilih Content ID</label>
+                            <select id="detailsContentIdSelect" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2"></select>
+                        </div>
+                        <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700">Jalankan</button>
+                        <pre id="getDetailsOutput" class="mt-4 bg-slate-900 rounded-md p-3 text-xs"></pre>
+                    </form>
+                </div>
+
+                <div class="endpoint-section">
+                    <h3 class="mb-4"><span class="api-method api-post">POST</span> /content/reviews</h3>
+                    <p class="text-sm text-slate-400 mb-4">Mengirim ulasan baru ke MongoDB.</p>
+                    <form id="postReviewForm" class="space-y-4">
+                        <div>
+                            <label for="postReviewContentIdSelect">Pilih Content ID</label>
+                            <select id="postReviewContentIdSelect" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2"></select>
+                        </div>
+                        <div>
+                            <label for="postReviewUserIdSelect">Pilih User ID</label>
+                            <select id="postReviewUserIdSelect" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2"></select>
+                        </div>
+                        <div>
+                             <label for="reviewRating">Rating (1-10)</label>
+                             <input type="number" id="reviewRating" value="8" min="1" max="10" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2">
+                        </div>
+                        <div>
+                             <label for="reviewComment">Komentar</label>
+                             <textarea id="reviewComment" rows="3" class="w-full bg-slate-700 border border-slate-600 rounded-md p-2">Film yang sangat inspiratif!</textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700">Kirim Ulasan</button>
+                        <pre id="postReviewOutput" class="mt-4 bg-slate-900 rounded-md p-3 text-xs"></pre>
+                    </form>
+                </div>
+            </div>
+
+            <div id="db-schema" class="tab-content">
+                 <div class="bg-slate-800 p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold text-white mb-4">Skema Database</h2>
+                    <p class="text-slate-400 mb-6">Pilih tab untuk melihat struktur tabel dan koleksi yang digunakan di setiap database dalam arsitektur terdistribusi kami.</p>
+                    <div id="schema-tabs" class="flex border-b border-slate-700 mb-4">
+                        <button data-schema="erd" class="schema-tab-btn active px-4 py-2 font-medium border-b-2">ERD Konseptual</button>
+                        <button data-schema="mermaid" class="schema-tab-btn px-4 py-2 font-medium text-slate-400 border-b-2 border-transparent hover:text-white">Kode Mermaid</button>
+                        <button data-schema="postgres" class="schema-tab-btn px-4 py-2 font-medium text-slate-400 border-b-2 border-transparent hover:text-white">PostgreSQL (Citus)</button>
+                        <button data-schema="analytics" class="schema-tab-btn px-4 py-2 font-medium text-slate-400 border-b-2 border-transparent hover:text-white">PostgreSQL (Analytics)</button>
+                        <button data-schema="mongo" class="schema-tab-btn px-4 py-2 font-medium text-slate-400 border-b-2 border-transparent hover:text-white">MongoDB</button>
+                        <button data-schema="redis" class="schema-tab-btn px-4 py-2 font-medium text-slate-400 border-b-2 border-transparent hover:text-white">Redis</button>
+                    </div>
+                    <div id="erd-schema" class="schema-content active">
+                        <h4 class="text-xl font-semibold text-white mb-4">Diagram Hubungan Entitas (ERD) Konseptual</h4>
+                        <p class="text-slate-400 mb-4">Sisipkan gambar ERD Anda di sini. Anda dapat mengganti placeholder ini dengan tag `&lt;img&gt;` yang mengarah ke gambar ERD yang Anda hasilkan secara manual dari alat seperti PlantUML atau draw.io.</p>
+                        <div class="image-container">
+                            <img src="/image/ERD.png" alt="Diagram ERD Konseptual">
+                        </div>
+                        
+                        <h4 class="text-xl font-semibold text-white mt-8 mb-4">Representasi Tekstual ERD</h4>
+                        <p class="text-slate-400 mb-4">Diagram ini menunjukkan entitas-entitas utama dan hubungan antar mereka dalam skema database terdistribusi.</p>
+                        
+                        <div class="entity-group mb-8">
+                            <div class="entity-title text-sky-300">PostgreSQL (Citus)</div>
+                            <div class="entity">
+                                <strong>content_metadata</strong><br>
+                                - <span class="pk">content_id</span> (PK, UUID)<br>
+                                - title<br>
+                                - content_type<br>
+                                - rating<br>
+                                - ...
+                            </div>
+                            <div class="relationship">
+                                content_metadata <span class="relationship-arrow">---&lt;</span> content_cast_crew (1:N)<br>
+                                content_metadata <span class="relationship-arrow">---&lt;</span> content_genres (1:N)<br>
+                                content_metadata <span class="relationship-arrow">---&lt;</span> trending_daily (1:N)<br>
+                                content_metadata <span class="relationship-arrow">---&lt;</span> reviews (1:N, via API/MongoDB)<br>
+                                content_metadata <span class="relationship-arrow">---&lt;</span> user_watch_history (1:N, via FDW)
+                            </div>
+                            <div class="entity">
+                                <strong>content_cast_crew</strong><br>
+                                - <span class="pk">content_id</span> (PK, FK)<br>
+                                - <span class="pk">person_id</span> (PK, FK)<br>
+                                - character_name<br>
+                            </div>
+                            <div class="relationship">
+                                content_cast_crew <span class="relationship-arrow">&gt;---</span> cast_crew (N:1)
+                            </div>
+                            <div class="entity">
+                                <strong>cast_crew</strong><br>
+                                - <span class="pk">person_id</span> (PK, UUID)<br>
+                                - name<br>
+                                - role<br>
+                            </div>
+                            <div class="entity">
+                                <strong>content_genres</strong><br>
+                                - <span class="pk">content_id</span> (PK, FK)<br>
+                                - <span class="pk">genre_id</span> (PK, FK)<br>
+                            </div>
+                            <div class="relationship">
+                                content_genres <span class="relationship-arrow">&gt;---</span> genres (N:1)
+                            </div>
+                            <div class="entity">
+                                <strong>genres</strong><br>
+                                - <span class="pk">genre_id</span> (PK, SERIAL)<br>
+                                - name<br>
+                            </div>
+                            <div class="entity">
+                                <strong>trending_daily</strong><br>
+                                - <span class="pk">date</span> (PK)<br>
+                                - <span class="pk">content_id</span> (PK, FK)<br>
+                                - views<br>
+                            </div>
+                        </div>
+
+                        <div class="entity-group mb-8">
+                            <div class="entity-title text-green-300">PostgreSQL (Analytics - FDW Source & Logical Replication Publisher)</div>
+                            <div class="entity">
+                                <strong>users</strong><br>
+                                - <span class="pk">user_id</span> (PK, UUID)<br>
+                                - username<br>
+                                - email<br>
+                            </div>
+                            <div class="relationship">
+                                users <span class="relationship-arrow">---&lt;</span> user_watch_history (1:N)<br>
+                                users <span class="relationship-arrow">---&lt;</span> reviews (1:N, via API/MongoDB)
+                            </div>
+                            <div class="entity">
+                                <strong>user_watch_history</strong><br>
+                                - <span class="pk">history_id</span> (PK, BIGSERIAL)<br>
+                                - <span class="fk">user_id</span> (FK)<br>
+                                - <span class="fk">content_id</span> (FK, from PG Citus via logic)<br>
+                                - watched_at<br>
+                                - ...
+                            </div>
+                        </div>
+
+                         <div class="entity-group mb-8">
+                            <div class="entity-title text-emerald-300">MongoDB</div>
+                            <div class="entity">
+                                <strong>reviews</strong> (Collection)<br>
+                                - <span class="pk">_id</span> (ObjectId)<br>
+                                - <span class="fk">content_id</span> (FK, UUID from PG Citus)<br>
+                                - <span class="fk">user_id</span> (FK, UUID from PG Analytics)<br>
+                                - rating<br>
+                                - comment<br>
+                                - created_at<br>
+                            </div>
+                        </div>
+
+                        <div class="entity-group">
+                            <div class="entity-title text-rose-300">Redis</div>
+                            <p class="text-slate-400">Redis menyimpan data sebagai kunci-nilai sederhana atau struktur data yang lebih kompleks. Hubungan ditentukan oleh kunci yang merujuk pada ID dari database lain.</p>
+                            <div class="entity">
+                                <strong>Kunci Cache Metadata Konten</strong><br>
+                                - Key: <code>content:metadata:&lt;content_id&gt;</code><br>
+                                - Value: JSON dari metadata konten
+                            </div>
+                            <div class="entity">
+                                <strong>Trending Content (Sorted Set)</strong><br>
+                                - Key: <code>trending:daily</code><br>
+                                - Members: <code>&lt;content_id&gt;</code><br>
+                                - Scores: Jumlah views (untuk peringkat)
+                            </div>
+                        </div>
+
+                    </div>
+                    <div id="mermaid-schema" class="schema-content hidden">
+                        <h4 class="text-xl font-semibold text-white mb-4">Kode Mermaid untuk ERD Konseptual</h4>
+                        <p class="text-slate-400 mb-4">Salin kode di bawah ini ke <a href="https://mermaid.live/edit" target="_blank" class="text-sky-400 hover:underline">Mermaid Live Editor</a> untuk menghasilkan diagram ERD.</p>
+                        <pre class="bg-slate-900 rounded-md p-4 text-sm whitespace-pre-wrap word-break break-all"><code>
+erDiagram
+    %% Entities from PostgreSQL (Citus)
+    CONTENT_METADATA {
+        UUID content_id PK "Sharded"
+        VARCHAR title
+        VARCHAR content_type
+        NUMERIC rating
+    }
+    CAST_CREW {
+        UUID person_id PK "Reference"
+        VARCHAR name
+        VARCHAR role
+    }
+    GENRES {
+        SERIAL genre_id PK "Reference"
+        VARCHAR name
+    }
+    CONTENT_CAST_CREW {
+        UUID content_id PK,FK
+        UUID person_id PK,FK
+        VARCHAR character_name
+    }
+    CONTENT_GENRES {
+        UUID content_id PK,FK
+        INT genre_id PK,FK
+    }
+    TRENDING_DAILY {
+        DATE date PK
+        UUID content_id PK,FK
+        INT views
+    }
+
+    %% Entities from PostgreSQL (Analytics)
+    USERS {
+        UUID user_id PK
+        VARCHAR username
+        VARCHAR email
+    }
+    USER_WATCH_HISTORY {
+        BIGSERIAL history_id PK
+        UUID user_id FK
+        UUID content_id FK
+        TIMESTAMP watched_at
+    }
+
+    %% MongoDB Collection
+    REVIEWS {
+        ObjectId _id PK
+        UUID content_id FK
+        UUID user_id FK
+        NUMERIC rating
+        TEXT comment
+    }
+
+    %% Relationships
+    CONTENT_METADATA ||--o{ CONTENT_CAST_CREW : has
+    CONTENT_CAST_CREW }o--|| CAST_CREW : plays_role_in
+
+    CONTENT_METADATA ||--o{ CONTENT_GENRES : has
+    CONTENT_GENRES }o--|| GENRES : categorized_as
+
+    CONTENT_METADATA ||--o{ TRENDING_DAILY : tracked_daily_views_for
+    
+    CONTENT_METADATA ||--o{ REVIEWS : reviewed_in(MongoDB)
+    USERS ||--o{ REVIEWS : writes_review (via API)
+
+    USERS ||--o{ USER_WATCH_HISTORY : watches
+    CONTENT_METADATA ||--o{ USER_WATCH_HISTORY : tracked_watch (via FDW)
+    </code></pre>
+                    </div>
+                    <div id="postgres-schema" class="schema-content hidden">
+                        <pre class="bg-slate-900 rounded-md p-4 text-sm"><code>-- Tabel Terdistribusi (Sharded)
+CREATE TABLE content_metadata (
+  content_id UUID, title VARCHAR, ...
+);
+CREATE TABLE content_cast_crew ( ... );
+CREATE TABLE content_genres ( ... );
+
+-- Tabel Referensi (Replicated)
+CREATE TABLE cast_crew ( ... );
+CREATE TABLE genres ( ... );</code></pre>
+                    </div>
+                    <div id="analytics-schema" class="schema-content hidden">
+                        <pre class="bg-slate-900 rounded-md p-4 text-sm"><code>-- Tabel diakses via FDW dan direplikasi
+CREATE TABLE users (
+  user_id UUID, username VARCHAR, ...
+);
+CREATE TABLE user_watch_history (
+  history_id BIGSERIAL, user_id UUID, ...
+);</code></pre>
+                    </div>
+                    <div id="mongo-schema" class="schema-content hidden">
+                        <pre class="bg-slate-900 rounded-md p-4 text-sm"><code>// Koleksi untuk data semi-terstruktur
+db.createCollection("reviews", {
+  validator: { $jsonSchema: {
+    bsonType: "object",
+    required: ["content_id", "user_id", "rating"],
+    properties: { ... }
+  }}
+})</code></pre>
+                    </div>
+                     <div id="redis-schema" class="schema-content hidden">
+                        <pre class="bg-slate-900 rounded-md p-4 text-sm"><code># Kunci untuk Caching & Real-time Data
+# Cache Metadata (String JSON dengan TTL)
+GET content:metadata:&lt;content_id&gt;
+
+# Data Trending (Sorted Set)
+ZREVRANGE trending:daily 0 9 WITHSCORES
+</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div id="project-structure" class="tab-content">
+                <div class="bg-slate-800 p-6 rounded-xl space-y-4">
+                    <h2 class="text-2xl font-bold text-white mb-4">Struktur Proyek Node.js</h2>
+                    <p class="text-slate-400 mb-6">Bagian ini menjelaskan peran setiap direktori dan file utama dalam proyek Node.js. Memahami struktur ini penting untuk pengembangan dan pemeliharaan.</p>
+                    
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span><code>server.js</code> (Entry Point)</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">File ini adalah titik masuk utama aplikasi. Bertanggung jawab untuk menginisialisasi server Express, menghubungkan ke semua database, memuat middleware, dan mendefinisikan rute utama. Ini adalah orkestrator dari aplikasi backend.</p>
+                        </div>
+                    </div>
+
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span><code>routes/</code> (API Endpoints & Routing)</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Direktori ini berisi definisi semua rute API (endpoint). Setiap file di sini (misalnya, <code>contentRoutes.js</code>) mengelompokkan rute berdasarkan fungsionalitas. Mereka memetakan URL ke fungsi controller yang sesuai.</p>
+                        </div>
+                    </div>
+
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span><code>controllers/</code> (Logika Bisnis)</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Direktori ini berisi logika bisnis inti aplikasi. Setiap fungsi controller menerima permintaan, memprosesnya (misalnya, berinteraksi dengan database), dan mengirimkan respons. Mereka adalah "otak" di balik setiap endpoint API.</p>
+                        </div>
+                    </div>
+
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span><code>models/</code> (Skema Data/Model)</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Direktori ini mendefinisikan struktur data untuk database non-relasional seperti MongoDB (menggunakan Mongoose) atau skema data untuk interaksi dengan database relasional. Mereka menyediakan abstraksi untuk data aplikasi.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span><code>config/</code> (Konfigurasi)</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Direktori ini menyimpan semua konfigurasi aplikasi, termasuk detail koneksi database (PostgreSQL, MongoDB, Redis), pengaturan Swagger, dan variabel lingkungan. Memisahkan konfigurasi membantu pengelolaan dan keamanan.</p>
+                        </div>
+                    </div>
+
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span><code>middlewares/</code> (Middleware)</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Middleware adalah fungsi yang memiliki akses ke objek permintaan dan respons, serta fungsi middleware berikutnya dalam siklus request-response aplikasi. Digunakan untuk tugas-tugas seperti logging, otentikasi, parsing body, atau CORS.</p>
+                        </div>
+                    </div>
+
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span><code>scripts/</code> (Skrip Utilitas)</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Direktori ini berisi skrip-skrip tambahan yang tidak menjadi bagian dari logika bisnis utama aplikasi, seperti skrip seeding database untuk mengisi data awal, atau skrip pemeliharaan lainnya.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="concepts" class="tab-content">
+                <div class="bg-slate-800 p-6 rounded-xl space-y-4">
+                    <h2 class="text-2xl font-bold text-white mb-4">Konsep Kunci Arsitektur</h2>
+                     <p class="text-slate-400 mb-6">Bagian ini menjelaskan konsep-konsep teknis inti yang menjadi dasar arsitektur platform ini. Klik setiap item untuk mempelajari lebih lanjut tentang bagaimana teknologi ini diimplementasikan.</p>
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span>Replikasi Logis</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Replikasi logis menyalin perubahan data pada tingkat tabel ke database lain, yang sangat berguna untuk ketersediaan tinggi dan pemisahan beban kerja. Di sini, `postgres_analytics_db` bertindak sebagai *publisher*, mempublikasikan setiap perubahan pada tabel `users` dan `user_watch_history`. `postgres_analytics_replica_db` bertindak sebagai *subscriber*, menerima pembaruan ini secara *real-time* untuk memastikan salinan data selalu sinkron.</p>
+                        </div>
+                    </div>
+                    <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span>Sharding dengan Citus</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Sharding adalah teknik memecah database besar menjadi bagian-bagian yang lebih kecil (disebut shard) yang didistribusikan di beberapa server. Kami menggunakan ekstensi Citus pada PostgreSQL untuk melakukan ini. Tabel `content_metadata` dipecah berdasarkan `content_id`, sehingga data untuk setiap film atau serial disimpan di server yang sama, membuat kueri lebih cepat.</p>
+                        </div>
+                    </div>
+                     <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span>Foreign Data Wrapper (FDW)</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">FDW adalah fitur PostgreSQL yang memungkinkan satu database mengakses tabel dari database lain (bahkan database yang berbeda jenis) seolah-olah itu adalah tabel lokal. Dalam proyek ini, database utama (`metadata_db`) menggunakan FDW untuk melakukan JOIN dengan tabel `users` dari database `analytics_db` tanpa perlu memindahkan data.</p>
+                        </div>
+                    </div>
+                     <div class="concept-item bg-slate-700/50 p-4 rounded-lg">
+                        <button class="accordion-btn w-full text-left font-semibold text-lg text-white flex justify-between items-center">
+                            <span>Caching dengan Redis</span>
+                            <span class="accordion-icon transform rotate-0 transition-transform">&#9660;</span>
+                        </button>
+                        <div class="accordion-content">
+                            <p class="pt-2 text-slate-400">Untuk mengurangi beban pada database utama, metadata konten yang sering diakses disimpan sementara di Redis, sebuah database in-memory yang sangat cepat. Saat sebuah permintaan datang, aplikasi pertama-tama memeriksa Redis. Jika data ada di cache, data dikembalikan langsung tanpa perlu mengkueri PostgreSQL, sehingga respons menjadi jauh lebih cepat.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const tabs = document.querySelectorAll('.tab-btn');
+        const contents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(item => item.classList.remove('active'));
+                tab.classList.add('active');
+
+                const target = document.getElementById(tab.dataset.tab);
+                contents.forEach(content => content.classList.remove('active'));
+                target.classList.add('active');
+            });
+        });
+
+        const schemaTabs = document.querySelectorAll('.schema-tab-btn');
+        const schemaContents = document.querySelectorAll('.schema-content');
+
+        schemaTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                schemaTabs.forEach(item => {
+                    item.classList.remove('active', 'text-white', 'border-sky-500');
+                    item.classList.add('text-slate-400', 'border-transparent');
+                });
+                tab.classList.add('active', 'text-white', 'border-sky-500');
+                tab.classList.remove('text-slate-400', 'border-transparent');
+
+                const target = document.getElementById(tab.dataset.schema + '-schema');
+                schemaContents.forEach(content => content.classList.add('hidden'));
+                target.classList.remove('hidden');
+            });
+        });
+
+        const accordions = document.querySelectorAll('.accordion-btn');
+        accordions.forEach(accordion => {
+            accordion.addEventListener('click', () => {
+                const content = accordion.nextElementSibling;
+                const icon = accordion.querySelector('.accordion-icon');
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                    icon.style.transform = 'rotate(0deg)';
+                } else {
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    icon.style.transform = 'rotate(180deg)';
+                } 
+            });
+        });
+        
+        const API_BASE_URL = 'http://localhost:3000/api/v1';
+
+        async function makeApiCall(url, options = {}, outputElementId) {
+            const outputElement = document.getElementById(outputElementId);
+            outputElement.textContent = 'Memuat...';
+            let status = 'Error';
+            try {
+                const response = await fetch(url, options);
+                status = response.status;
+                const data = await response.json();
+                displayResponse(outputElement, data, status);
+            } catch (error) {
+                displayResponse(outputElement, { error: 'Gagal mengambil data dari API', details: error.message }, status);
+            }
+        }
+        
+        function displayResponse(outputElement, data, status) {
+            let statusClass = 'status-error';
+            if (status >= 200 && status < 300) statusClass = 'status-200';
+            else if (status === 404) statusClass = 'status-404';
+            else if (status >= 500) statusClass = 'status-500';
+            outputElement.innerHTML = `<div><span class="response-status ${statusClass}">${status}</span></div><pre class="mt-2">${JSON.stringify(data, null, 2)}</pre>`;
+        }
+        
+        function populateSelect(selectElement, items, type) {
+            selectElement.innerHTML = '';
+            if (items && items.length > 0) {
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.textContent = item;
+                    selectElement.appendChild(option);
+                });
+            } else {
+                selectElement.innerHTML = `<option value="">Tidak ada ID ${type} ditemukan</option>`;
+            }
+            selectElement.disabled = false;
+        }
+        
+        async function loadDropdowns() {
+            document.getElementById('api-loading-message').style.display = 'block';
+            try {
+                const [contentRes, userRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/content/ids`),
+                    fetch(`${API_BASE_URL}/content/users/ids`)
+                ]);
+                const contentIds = await contentRes.json();
+                const userIds = await userRes.json();
+                
+                populateSelect(document.getElementById('detailsContentIdSelect'), contentIds, 'Konten');
+                populateSelect(document.getElementById('postReviewContentIdSelect'), contentIds, 'Konten');
+                populateSelect(document.getElementById('postReviewUserIdSelect'), userIds, 'Pengguna');
+            } catch(e) {
+                console.error("Gagal memuat dropdown:", e);
+                alert("Tidak dapat memuat data awal. Pastikan backend berjalan dan telah di-seed.");
+                document.querySelectorAll('select').forEach(select => select.disabled = false);
+
+            } finally {
+                document.getElementById('api-loading-message').style.display = 'none';
+            }
+        }
+        
+        document.getElementById('getAllContentIdsForm').addEventListener('submit', e => {
+            e.preventDefault();
+            makeApiCall(`${API_BASE_URL}/content/ids`, {}, 'getAllContentIdsOutput');
+        });
+
+        document.getElementById('getAllUserIdsForm').addEventListener('submit', e => {
+            e.preventDefault();
+            makeApiCall(`${API_BASE_URL}/content/users/ids`, {}, 'getAllUserIdsOutput');
+        });
+        
+        document.getElementById('getDetailsForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const id = document.getElementById('detailsContentIdSelect').value;
+            if (id) makeApiCall(`${API_BASE_URL}/content/${id}/details`, {}, 'getDetailsOutput');
+        });
+
+        document.getElementById('postReviewForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const contentId = document.getElementById('postReviewContentIdSelect').value;
+            const userId = document.getElementById('postReviewUserIdSelect').value;
+            const rating = document.getElementById('reviewRating').value;
+            const comment = document.getElementById('reviewComment').value;
+
+            if (!contentId || !userId) {
+                alert("Content ID and User ID must be selected.");
+                return;
+            }
+
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, rating: parseInt(rating), comment })
+            };
+            makeApiCall(`${API_BASE_URL}/content/${contentId}/reviews`, options, 'postReviewOutput');
+        });
+        
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['-50s', '-40s', '-30s', '-20s', '-10s', 'Sekarang'],
+                datasets: [{
+                    label: 'Waktu Respons API (ms)',
+                    data: [120, 150, 90, 220, 180, 130],
+                    borderColor: '#38bdf8',
+                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                    x: { grid: { color: 'rgba(255, 255, 255, 0.1)' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return 'Waktu: ' + context[0].label;
+                            },
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y + ' ms';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        loadDropdowns();
+    });
+</script>
+
+</body>
+</html>

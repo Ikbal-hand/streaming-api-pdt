@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: streaming-metadata-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - postgresdb
+      - postgres_analytics_db
+      - postgres_analytics_replica_db # Dependensi baru untuk replika
+      - mongodb
+      - redis
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      PG_HOST: postgresdb
+      PG_USER: admin
+      PG_PASSWORD: password
+      PG_DB: metadata_db
+      PG_PORT: 5432
+      PG_ANALYTICS_HOST: postgres_analytics_db
+      PG_ANALYTICS_USER: analytics_admin
+      PG_ANALYTICS_PASSWORD: analytics_password
+      PG_ANALYTICS_DB: analytics_db
+      PG_ANALYTICS_REPLICA_HOST: postgres_analytics_replica_db
+      PG_ANALYTICS_REPLICA_USER: analytics_replica_admin
+      PG_ANALYTICS_REPLICA_PASSWORD: analytics_replica_password
+      PG_ANALYTICS_REPLICA_DB: analytics_replica_db
+      PG_ANALYTICS_REPLICA_PORT: 5434
+      MONGO_URI: mongodb://mongodb:27017/metadata_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+  postgresdb:
+    image: citusdata/citus:11.3
+    container_name: streaming-postgres-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: metadata_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # PostgreSQL Analytics - PUBLISHER (Master)
+  postgres_analytics_db:
+    image: postgres:15-alpine
+    container_name: streaming-postgres-analytics-db
+    restart: always
+    ports:
+      - "5433:5432" # Port master
+    environment:
+      POSTGRES_USER: analytics_admin
+      POSTGRES_PASSWORD: analytics
+      POSTGRES_DB: analytics_db
+    volumes:
+      - postgres_analytics_data:/var/lib/postgresql/data
+      - ./init-analytics-master.sql:/docker-entrypoint-initdb.d/init-analytics-master.sql
+    healthcheck: # Healthcheck untuk memastikan DB siap sebelum replika terhubung
+      test: ["CMD-SHELL", "pg_isready -U analytics_admin -d analytics_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: postgres -c wal_level=logical -c max_replication_slots=10 -c max_wal_senders=10 -c listen_addresses='*'
+
+  # PostgreSQL Analytics - SUBSCRIBER (Replica)
+  postgres_analytics_replica_db:
+    image: postgres:15-alpine
+    container_name: streaming-postgres-analytics-replica-db
+    restart: always
+    ports:
+      - "5434:5432" # Port replika
+    environment:
+      POSTGRES_USER: analytics_replica_admin
+      POSTGRES_PASSWORD: analytics_replica_password
+      POSTGRES_DB: analytics_replica_db
+    volumes:
+      - postgres_analytics_replica_data:/var/lib/postgresql/data
+      - ./init-analytics-replica.sql:/docker-entrypoint-initdb.d/init-analytics-replica.sql
+    depends_on:
+      postgres_analytics_db:
+        condition: service_healthy # Pastikan master sehat sebelum replika mencoba terhubung
+
+  mongodb:
+    image: mongo:latest
+    container_name: streaming-mongo-db
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:latest
+    container_name: streaming-redis-cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  postgres_analytics_data:
+  postgres_analytics_replica_data:
+  mongo_data:
+  redis_data:

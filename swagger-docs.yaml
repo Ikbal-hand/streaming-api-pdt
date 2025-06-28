@@ -1,0 +1,186 @@
+# swagger-docs.yaml
+openapi: 3.0.0
+info:
+  title: Streaming Service Metadata Platform API
+  version: 1.0.0
+  description: |
+    A comprehensive backend system for a streaming service, built with a distributed architecture:
+
+    **1. PostgreSQL (Citus):** Used for structured, relational data (content metadata, genres, etc.). Demonstrates **sharding** for horizontal scalability and **replication** for high availability.
+    **2. PostgreSQL (Analytics DB):** Used for user data (profiles, watch history) and accessed by the main DB via **Foreign Data Wrapper (FDW)** for federated queries.
+    **3. MongoDB:** Used for semi-structured data (user reviews, season/episode details).
+    **4. Redis:** Used for fast-access data and real-time counters (trending views).
+
+    Endpoints in this API effectively utilize these distributed data sources.
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Development server (Localhost)
+
+tags:
+  - name: Content
+    description: Endpoints for managing and retrieving content metadata, reviews, and trending data.
+  - name: Users
+    description: Endpoints for retrieving user-related information.
+
+components:
+  schemas:
+    ContentMetadata:
+      type: object
+      properties:
+        content_id: { type: string, description: 'Unique UUID for the content.', example: 'd4938635-8bee-48ba-8159-0acffc456053' }
+        title: { type: string, description: 'The title of the content.', example: 'The Coder' }
+        original_title: { type: string, description: 'Original title.', example: 'The Coder' }
+        release_date: { type: string, format: 'date', description: 'The release date of the content.', example: '2022-03-15' }
+        duration_minutes: { type: integer, description: 'Duration in minutes.', example: 120 }
+        content_type: { type: string, description: 'Type of content.', enum: ['movie', 'series', 'documentary'], example: 'movie' }
+        summary: { type: string, description: 'A brief synopsis.', example: 'A thrilling story about a programmer.' }
+        rating: { type: number, format: 'float', description: 'Average rating (0-10).', example: 8.9 }
+        created_at: { type: string, format: 'date-time' }
+        updated_at: { type: string, format: 'date-time' }
+    Review:
+      type: object
+      required: [user_id, rating, comment]
+      properties:
+        content_id: { type: string, description: 'Content UUID.', example: 'd4938635-8bee-48ba-8159-0acffc456053' }
+        user_id: { type: string, description: 'User UUID.', example: '76a25a4f-f283-4408-bf87-8ddcf31b8085' }
+        rating: { type: number, description: 'Rating (1-10).', example: 9.5 }
+        comment: { type: string, description: 'User\'s comment.', example: 'Fantastic!' }
+        created_at: { type: string, format: 'date-time' }
+    WatchHistory:
+      type: object
+      properties:
+        user_id: { type: string }
+        content_id: { type: string }
+        username: { type: string }
+        title: { type: string }
+        watched_at: { type: string, format: 'date-time' }
+        duration_watched_seconds: { type: integer }
+
+paths:
+  /content/ids:
+    get:
+      summary: Get all Content IDs
+      description: Retrieves a simple list of UUIDs for all content items.
+      tags: [Content]
+      x-used-databases: [PostgreSQL (Citus)]
+      responses:
+        "200": { description: "A list of IDs.", content: { application/json: { example: ["uuid1", "uuid2"] } } }
+        "500": { description: "Server error." }
+  /content/users/ids:
+    get:
+      summary: Get all User IDs
+      description: Retrieves a list of UUIDs for all users from the Analytics DB via FDW.
+      tags: [Users]
+      x-used-databases: [PostgreSQL (Analytics - FDW)]
+      responses:
+        "200": { description: "A list of IDs.", content: { application/json: { example: ["uuidA", "uuidB"] } } }
+        "500": { description: "Server error." }
+  /content/trending/daily:
+    get:
+      summary: Get top trending content
+      description: Fetches content IDs and view scores from a Redis Sorted Set.
+      tags: [Content]
+      x-used-databases: [Redis]
+      responses:
+        "200": { description: "Trending data.", content: { application/json: { example: [{ content_id: "uuid1", views: 1500 }] } } }
+        "500": { description: "Server error." }
+  /content/{id}:
+    get:
+      summary: Get content metadata by ID
+      description: Retrieves core metadata from PostgreSQL, with Redis caching.
+      tags: [Content]
+      x-used-databases: [PostgreSQL (Citus), Redis]
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string, format: uuid, example: "d4938635-8bee-48ba-8159-0acffc456053" }
+          required: true
+          description: The unique ID of the content.
+      responses:
+        "200": { description: "Content metadata.", content: { application/json: { schema: { $ref: '#/components/schemas/ContentMetadata' } } } }
+        "404": { description: "Content not found." }
+        "500": { description: "Server error." }
+  /content/{id}/reviews:
+    get:
+      summary: Get reviews for content
+      description: Retrieves all reviews for a content item from MongoDB.
+      tags: [Content]
+      x-used-databases: [MongoDB]
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string, format: uuid, example: "d4938635-8bee-48ba-8159-0acffc456053" }
+          required: true
+          description: The unique ID of the content.
+      responses:
+        "200": { description: "List of reviews.", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Review' } } } } }
+        "404": { description: "Content not found." }
+        "500": { description: "Server error." }
+  /content/{id}/details:
+    get:
+      summary: Get comprehensive details (federated)
+      description: Combines data from PostgreSQL, MongoDB, and Redis.
+      tags: [Content]
+      x-used-databases: [PostgreSQL (Citus), PostgreSQL (Analytics - FDW), MongoDB, Redis]
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string, format: uuid, example: "d4938635-8bee-48ba-8159-0acffc456053" }
+          required: true
+          description: The unique ID of the content.
+      responses:
+        "200": { description: "Combined details.", content: { application/json: { schema: { type: object, properties: { metadata: { $ref: '#/components/schemas/ContentMetadata' }, reviews: { type: array, items: { $ref: '#/components/schemas/Review' } }, real_time_views: { type: integer } } } } } }
+        "404": { description: "Content not found." }
+        "500": { description: "Server error." }
+  /content/{id}/views/increment:
+    post:
+      summary: Increment view count
+      description: Increments view count in Redis.
+      tags: [Content]
+      x-used-databases: [Redis]
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string, format: uuid, example: "d4938635-8bee-48ba-8159-0acffc456053" }
+          required: true
+          description: The unique ID of the content.
+      responses:
+        "200": { description: "Success.", content: { application/json: { example: { message: "View count incremented" } } } }
+        "500": { description: "Server error." }
+  /content/{id}/reviews:
+    post:
+      summary: Submit a new review
+      description: Adds a new review document to MongoDB.
+      tags: [Content]
+      x-used-databases: [MongoDB]
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string, format: uuid, example: "d4938635-8bee-48ba-8159-0acffc456053" }
+          required: true
+          description: The unique ID of the content.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Review' }
+      responses:
+        "201": { description: "Review added.", content: { application/json: { example: { message: "Review added successfully" } } } }
+        "500": { description: "Server error." }
+  /content/users/{userId}/watch-history:
+    get:
+      summary: Get user watch history
+      description: Joins User data (FDW) with Content metadata (Citus).
+      tags: [Users]
+      x-used-databases: [PostgreSQL (Citus), PostgreSQL (Analytics - FDW)]
+      parameters:
+        - in: path
+          name: userId
+          schema: { type: string, format: uuid, example: "76a25a4f-f283-4408-bf87-8ddcf31b8085" }
+          required: true
+          description: The unique ID of the user.
+      responses:
+        "200": { description: "Watch history.", content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/WatchHistory' } } } } }
+        "404": { description: "User not found." }
+        "500": { description: "Server error." }
