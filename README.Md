@@ -129,20 +129,25 @@ This platform follows a **microservice architecture** backed by distributed data
 ---
 
 ## 7. 🔄 Distributed Query Scenarios
+Here is the GitHub-compatible markdown format for your **API Endpoint Reference Table**, tailored for display in your project’s `README.md`:
 
-### 🧩 GET `/api/v1/content/{id}/details`
+---
 
-Combines:
-- PostgreSQL Citus (metadata)
-- MongoDB (user reviews)
-- Redis (live view count)
-- FDW from `analytics_db` (usernames)
+### 📡 API Endpoint Reference
 
-### 📼 GET `/api/v1/content/users/{userId}/watch-history`
+| Method | Endpoint                                       | Data Source                   |
+| ------ | ---------------------------------------------- | ----------------------------- |
+| `GET`  | `/api/v1/content/ids`                          | PostgreSQL (Citus)            |
+| `GET`  | `/api/v1/content/users/ids`                    | PostgreSQL (Analytics - FDW)  |
+| `GET`  | `/api/v1/content/trending/daily`               | Redis                         |
+| `GET`  | `/api/v1/content/{id}`                         | Citus + Redis                 |
+| `GET`  | `/api/v1/content/{id}/reviews`                 | MongoDB                       |
+| `GET`  | `/api/v1/content/{id}/details`                 | Citus + MongoDB + FDW + Redis |
+| `GET`  | `/api/v1/content/users/{userId}/watch-history` | PostgreSQL (FDW)              |
+| `POST` | `/api/v1/content/{id}/reviews`                 | MongoDB                       |
+| `POST` | `/api/v1/content/{id}/views/increment`         | Redis                         |
 
-Federated query using:
-- FDW (PostgreSQL analytics)
-- JOIN with metadata via Citus
+> 🛠️ **Note:** All endpoints return JSON responses and follow RESTful conventions. Authentication is optional and can be integrated via JWT middleware.
 
 ---
 
