@@ -47,7 +47,7 @@ Sistem backend ini dirancang untuk mengelola data kompleks dari layanan *streami
 
 Platform ini menggunakan arsitektur **mikroservis dan database terdistribusi**.
   
-![Arsitektur Sistem StreamingAPI]https://github.com/Ikbal-hand/streaming-api-pdt/blob/main/image/SYSTEM.png
+![Arsitektur Sistem StreamingAPI](https://github.com/Ikbal-hand/streaming-api-pdt/blob/main/image/SYSTEM.png)
 
 ### Komponen:
 
