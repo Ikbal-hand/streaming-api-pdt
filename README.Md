@@ -46,6 +46,9 @@ Sistem backend ini dirancang untuk mengelola data kompleks dari layanan *streami
 ## 🏗️ 2. Arsitektur Sistem
 
 Platform ini menggunakan arsitektur **mikroservis dan database terdistribusi**.
+  
+![Arsitektur Sistem StreamingAPI](/image/SYSTEM.PNG)
+
 
 ### Komponen:
 
@@ -175,10 +178,3 @@ npm run seed
 * **Swagger UI**: [`http://localhost:3000/api-docs`](http://localhost:3000/api-docs)
 
 ---
-
-```
-
-> Jika Anda ingin menambahkan badge (Build, License, Coverage, DockerHub, dsb), bagian itu bisa diletakkan di paling atas.
-
-Ingin versi dalam bahasa Inggris juga? Saya bisa bantu duplikasinya secara otomatis.
-```
