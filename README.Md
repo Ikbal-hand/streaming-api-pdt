@@ -1,179 +1,174 @@
-
-# ✨ Streaming Service Metadata Platform ✨
-
-A comprehensive, scalable backend system for a streaming platform, built with Node.js, PostgreSQL (Citus), MongoDB, and Redis.
+Tentu! Berikut versi **README.md dalam Bahasa Inggris**, sudah diformat profesional dan siap untuk dipublikasikan di GitHub, internal wiki, atau laporan proyek:
 
 ---
 
-## 📑 Daftar Isi
+```markdown
+# ✨ Project Report: Streaming Service Metadata Platform ✨
 
-1. [Ikhtisar Proyek](#-1-ikhtisar-proyek)
-2. [Arsitektur Sistem](#-2-arsitektur-sistem)
-3. [Implementasi Konsep Kunci](#-3-implementasi-konsep-kunci)
-   - [3.1. Replikasi Logis](#31-replikasi-logis)
-   - [3.2. Sharding (dengan Citus)](#32-sharding-dengan-citus)
-   - [3.3. Foreign Data Wrapper (FDW)](#33-foreign-data-wrapper-fdw)
-4. [Keberhasilan Implementasi Distributed Database](#-4-keberhasilan-implementasi-distributed-database)
-5. [Dokumentasi Full REST API](#-5-dokumentasi-full-rest-api)
-   - [5.1. Akses Dokumentasi](#51-akses-dokumentasi)
-   - [5.2. Ringkasan Endpoint API](#52-ringkasan-endpoint-api)
-6. [Persiapan dan Menjalankan Proyek](#-6-persiapan-dan-menjalankan-proyek)
-   - [6.1. Struktur Proyek](#61-struktur-proyek)
-   - [6.2. Instalasi Dependensi](#62-instalasi-dependensi)
-   - [6.3. Menjalankan Layanan dengan Docker Compose](#63-menjalankan-layanan-dengan-docker-compose)
-   - [6.4. Mengisi Database (Seeding)](#64-mengisi-database-seeding)
-   - [6.5. Mengakses Aplikasi](#65-mengakses-aplikasi)
+A distributed backend system for streaming services using Node.js, PostgreSQL (Citus), MongoDB, and Redis.
 
 ---
 
-## 🌟 1. Ikhtisar Proyek
+## 📑 Table of Contents
 
-Sistem backend ini dirancang untuk mengelola data kompleks dari layanan *streaming* seperti metadata konten, riwayat tontonan pengguna, ulasan, dan statistik tren.
-
-### 🔧 Teknologi Utama
-
-| Teknologi            | Peran                                                       |
-|----------------------|-------------------------------------------------------------|
-| Node.js (Express)    | API Gateway                                                 |
-| PostgreSQL (Citus)   | Sharded relational database                                 |
-| MongoDB              | Dokumen database untuk ulasan & data semi-terstruktur       |
-| Redis                | Cache dan real-time trends                                  |
-| Docker               | Containerization & orchestration                            |
-| Swagger / OpenAPI    | Dokumentasi API interaktif                                  |
+1. [Introduction](#1-introduction)  
+2. [Use Case Overview](#2-use-case-overview)  
+3. [System Architecture](#3-system-architecture)  
+4. [Technology Stack & Justification](#4-technology-stack--justification)  
+5. [Database Schema Design](#5-database-schema-design)  
+6. [Sharding & Replication Strategy](#6-sharding--replication-strategy)  
+7. [Query or Distributed Scenario Examples](#7-query-or-distributed-scenario-examples)  
+8. [Challenges & Lessons Learned](#8-challenges--lessons-learned)  
+9. [Conclusion](#9-conclusion)
 
 ---
 
-## 🏗️ 2. Arsitektur Sistem
+## 1. Introduction
 
-Platform ini menggunakan arsitektur **mikroservis dan database terdistribusi**.
-  
-![Arsitektur Sistem StreamingAPI](https://github.com/Ikbal-hand/streaming-api-pdt/blob/main/image/SYSTEM.png)
-
-### Komponen:
-
-- **API Gateway (Node.js)** – Titik masuk utama request client.
-- **PostgreSQL (Citus)** – Sharded DB untuk konten.
-- **PostgreSQL Analytics DB** – Menyimpan data pengguna.
-- **PostgreSQL Replica DB** – Replika logis untuk *read-scaling*.
-- **MongoDB** – Data ulasan (semi-terstruktur).
-- **Redis** – Statistik real-time dan cache.
+This project aims to build a robust and scalable backend for a streaming metadata platform. The system manages and provides efficient access to diverse data—ranging from multimedia metadata to user profiles, reviews, and real-time trends—through a **distributed architecture** that ensures scalability, high availability, and flexibility for dynamic streaming workloads.
 
 ---
 
-## 🔑 3. Implementasi Konsep Kunci
+## 2. Use Case Overview
 
-### 3.1. Replikasi Logis
+The platform supports essential streaming service functionalities, including:
 
-- `analytics_pub`: Publication dari `users` & `user_watch_history`
-- `analytics_sub`: Subscription di replika
-- Diverifikasi via `SELECT count(*)` pada kedua DB
-
-### 3.2. Sharding (dengan Citus)
-
-- Tabel besar di-*shard* dengan `create_distributed_table()`
-- Tabel kecil (e.g. `genres`) sebagai `reference_table`
-- Diverifikasi melalui `citus_tables`
-
-### 3.3. Foreign Data Wrapper (FDW)
-
-- `postgres_fdw` menghubungkan `postgresdb` ke `analytics_db`
-- Tabel asing di-*import* dan digunakan dalam federated queries
+- 🔍 **Content Discovery**: Manages rich metadata (titles, summaries, genres, cast) for efficient search.
+- 🎯 **User Personalization**: Tracks watch history to deliver tailored recommendations.
+- 💬 **Community Interaction**: Handles user reviews and ratings to foster engagement.
+- 📈 **Trend Analysis**: Identifies popular content in real time for business decisions.
+- 🛠️ **Content Management**: Supports the addition, update, and lifecycle of content assets.
 
 ---
 
-## ✅ 4. Keberhasilan Implementasi Distributed Database
+## 3. System Architecture
 
-- ✅ **Citus** berhasil digunakan untuk *sharding*
-- ✅ **Replikasi logis** bekerja dengan baik
-- ✅ **FDW** memungkinkan query lintas DB
-- ✅ **MongoDB** dan **Redis** berhasil diintegrasikan
-- ✅ Endpoint API lintas data source berjalan dengan sukses
+The platform is built with **microservices** and **distributed databases**.
+![](https://github.com/Ikbal-hand/streaming-api-pdt/blob/main/image/SYSTEM.png)
 
----
+### Core Components:
 
-## 📚 5. Dokumentasi Full REST API
-
-### 5.1. Akses Dokumentasi
-
-Pastikan semua container Docker aktif:
-
-```bash
-http://localhost:3000/api-docs
-````
-
-### 5.2. Ringkasan Endpoint API
-
-| Method | Endpoint                                       | Database                      |
-| ------ | ---------------------------------------------- | ----------------------------- |
-| GET    | `/api/v1/content/ids`                          | PostgreSQL (Citus)            |
-| GET    | `/api/v1/content/users/ids`                    | PostgreSQL (Analytics - FDW)  |
-| GET    | `/api/v1/content/trending/daily`               | Redis                         |
-| GET    | `/api/v1/content/{id}`                         | Citus + Redis                 |
-| GET    | `/api/v1/content/{id}/reviews`                 | MongoDB                       |
-| GET    | `/api/v1/content/{id}/details`                 | Citus + MongoDB + FDW + Redis |
-| GET    | `/api/v1/content/users/{userId}/watch-history` | FDW                           |
-| POST   | `/api/v1/content/{id}/reviews`                 | MongoDB                       |
-| POST   | `/api/v1/content/{id}/views/increment`         | Redis                         |
+- **Node.js API Gateway**: The main entry point, handles business logic and routes API requests.
+- **PostgreSQL (Citus - `metadata_db`)**: Relational database for structured metadata; horizontally scaled via sharding.
+- **PostgreSQL (`analytics_db`)**: Stores user profiles and watch history; acts as replication publisher.
+- **PostgreSQL Replica (`analytics_replica_db`)**: Subscribes to logical replication for read scaling and availability.
+- **MongoDB**: Stores user reviews and other semi-structured data.
+- **Redis**: In-memory data store for caching and real-time view counters.
 
 ---
 
-## 🚀 6. Persiapan dan Menjalankan Proyek
+## 4. Technology Stack & Justification
 
-### 6.1. Struktur Proyek
+| Technology         | Description                                 | Reason for Selection                                  |
+|-------------------|---------------------------------------------|--------------------------------------------------------|
+| Node.js + Express | API Gateway, asynchronous & performant      | Ideal for REST APIs and real-time handling             |
+| PostgreSQL Citus   | Sharded relational database                 | Strong consistency with scalable architecture          |
+| MongoDB           | NoSQL document database                      | Great for semi-structured review data                  |
+| Redis             | In-memory data store                         | Ultra-fast caching and view tracking                   |
+| Docker            | Containerization platform                    | Ensures reproducible, portable environments            |
+| Swagger/OpenAPI   | API specification & documentation tool       | Interactive docs and developer communication           |
+| Faker.js          | Fake/mock data generator                     | For realistic development & seeding scenarios          |
 
-```bash
-streamingAPI/
-├── .env
-├── api-tester.html
-├── compose.yaml
-├── dockerfile
-├── init.sql
-├── init-analytics-master.sql
-├── init-analytics-replica.sql
-├── package.json
-├── server.js
-├── swagger-docs.yaml
-├── scripts/
-│   └── seed.js
-├── config/
-│   ├── database.js
-│   ├── mongo.js
-│   ├── redis.js
-│   └── swagger.js
-├── controllers/
-│   └── contentController.js
-├── middlewares/
-│   └── logger.js
-├── models/
-│   └── review.js
-├── routes/
-│   └── contentRoutes.js
+---
+
+## 5. Database Schema Design
+
+This project follows a **polyglot persistence** strategy.
+
+### PostgreSQL (Citus - `metadata_db`)
+
+- `content_metadata` (sharded) – Content details  
+- `cast_crew`, `genres` (reference tables)  
+- `content_cast_crew`, `content_genres` (co-located join tables)  
+- `trending_daily` (sharded)
+
+### PostgreSQL (`analytics_db`)
+
+- `users`, `user_watch_history`
+
+### MongoDB
+
+- `reviews`: Documents of user reviews
+
+### Redis
+
+- `content:metadata:<id>` (JSON string cache)  
+- `trending:daily` (sorted set)  
+- `content:views:<id>` (integer counter)
+
+---
+
+## 6. Sharding & Replication Strategy
+
+### 6.1. Sharding (Citus)
+
+- Performed on `content_metadata` via `create_distributed_table()` using `content_id`
+- Reference tables like `cast_crew` are replicated to all workers
+- Enables horizontal scaling and efficient co-location joins
+
+### 6.2. Logical Replication
+
+- `analytics_db` publishes changes from `users` and `user_watch_history`
+- `analytics_replica_db` subscribes to those publications
+- Benefits:
+  - ✅ High availability
+  - ✅ Read scaling
+  - ✅ Fault tolerance
+
+---
+
+## 7. Query or Distributed Scenario Examples
+
+### 📌 Content Detail Aggregation
+
+**Endpoint**: `GET /api/v1/content/{id}/details`  
+**Combines**:
+- Metadata from Citus
+- Reviews from MongoDB
+- View count from Redis
+- Usernames from PostgreSQL (FDW to analytics_db)
+
+### 📌 User Watch History
+
+**Endpoint**: `GET /api/v1/content/users/{userId}/watch-history`  
+**Combines**:
+- Watch records via FDW from `analytics_db`
+- Content metadata from `metadata_db`
+
+---
+
+## 8. Challenges & Lessons Learned
+
+| Challenge                                      | Lesson Learned                                                   |
+|-----------------------------------------------|------------------------------------------------------------------|
+| Citus version differences                     | Always verify docs & compatibility before deploying              |
+| Replication failed (wal_level not set)        | Set `wal_level = logical`, assign `REPLICATION` role             |
+| Docker startup race conditions                | Implement retry logic & healthchecks                             |
+| Node.js dependency issues                     | Ensure `npm install` runs within the container environment       |
+| Express route conflicts (`/:id` vs `/ids`)     | Always define static routes before dynamic parameter ones        |
+| Swagger parsing issues                        | Use a dedicated `.yaml` file instead of inline JSDoc comments    |
+
+---
+
+## 9. Conclusion
+
+This project successfully demonstrates:
+
+✅ Horizontal **sharding** with Citus  
+✅ **Logical replication** for scaling & availability  
+✅ Cross-database querying with **FDW**  
+✅ Integration of **MongoDB** and **Redis** for diverse data handling  
+✅ Unified APIs combining multi-source data
+
+### 🔭 Future Enhancements
+
+- Add more Citus worker nodes for true distributed testing  
+- Implement JWT-based authentication & advanced authorization  
+- Add centralized observability (logging, metrics)  
+- Develop automated testing suites (unit & integration)
+
+---
+
 ```
 
-### 6.2. Instalasi Dependensi
-
-```bash
-npm install
-```
-
-### 6.3. Menjalankan Layanan dengan Docker Compose
-
-```bash
-docker-compose down -v --remove-orphans
-docker-compose up --build -d
-```
-
-### 6.4. Mengisi Database (Seeding)
-
-Setelah semua container siap:
-
-```bash
-npm run seed
-```
-
-### 6.5. Mengakses Aplikasi
-
-* **API Tester**: Buka `api-tester.html` di browser
-* **Swagger UI**: [`http://localhost:3000/api-docs`](http://localhost:3000/api-docs)
-
----
+Jika Anda juga butuh file `.md` versi ini, saya bisa bantu buatkan untuk diunduh atau copy langsung ke proyek Anda. Ingin tambahan badge (CI, Docker Hub, License)? Saya bisa bantu juga.
