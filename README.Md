@@ -1,7 +1,3 @@
-Berikut adalah versi lengkap dan terformat **README.md** untuk proyek Anda: **Streaming Service Metadata Platform**, dengan struktur yang rapi, profesional, dan siap ditampilkan di GitHub atau dokumentasi internal.
-
----
-
 ````markdown
 # ✨ Streaming Service Metadata Platform ✨
 
